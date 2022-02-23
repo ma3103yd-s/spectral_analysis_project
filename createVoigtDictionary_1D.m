@@ -9,7 +9,7 @@ delta = mean(diff(fGrid));
 epsilon = 0.000001;
 
 for j = 1:length(fGrid)
-    a = (exp(T*(2i*pi*(fGrid(j)+delta)-beta))*exp(-T.^2*gamma)-exp(T*(2i*pi*fGrid(j))-beta)*exp(T.^2*gamma))./max(epsilon,2i*pi*T);
+    a = (exp(T*(2i*pi*(fGrid(j)+delta)-beta)).*exp(-T.^2*gamma)-exp(T*(2i*pi*fGrid(j))-beta).*exp(T.^2*gamma))./max(epsilon,2i*pi*T);
     a(a==0) = delta;
     A(:,j) = a/norm(a);
 end

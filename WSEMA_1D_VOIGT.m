@@ -1,4 +1,4 @@
-function [ fEst, betaEst, zEst ] = WSEMA_1D(y,T,gridSize,zoomSteps,zoomGridSize,gamma,nbrReweights,NLS_loops,extraLASSO,tooClose)
+function [ fEst, betaEst, gammaEst, zEst ] = WSEMA_1D_VOIGT(y,T,gridSize,zoomSteps,zoomGridSize,gamma,nbrReweights,NLS_loops,extraLASSO,tooClose)
 %WSEMA_1D 1D implementation of WSEM
 %y - signal values [N x 1]
 %T - time points [N x 1]
@@ -111,7 +111,7 @@ f_active = f_active+delta_k/2;
 F = A_K_hat(:,index);
 z = F\y;
 
-[fEst,betaEst,z,F] = NLS_WSEMA_1D(y,F,z,f_active,T,delta_k,NLS_loops,tooClose);
+[fEst,betaEst,gammaEst, z,F] = NLS_WSEMA_1D_VOIGT(y,F,z,f_active,T,delta_k,NLS_loops,tooClose);
 %[fEst,betaEst,z,F] = NLS_WSEMA_1D(y,F,z,fEst,T,delta_k,NLS_loops,1e-2);
 
 if extraLASSO && 0
@@ -133,6 +133,7 @@ index = abs(z)>0;
 zEst = z(index);
 fEst = fEst(:,index);
 betaEst = betaEst(:,index);
+gammaEst = gammaEst(:,index);
 
 end
 

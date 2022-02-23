@@ -1,10 +1,17 @@
 
 
-N = 100;
-f = [.3 .4];
-A = 20*[1 1];
-beta = [0.05 0.01];
-gamma = 0*[0.001 0.00001];
+% N = 100;
+% f = [.3 .4];
+% A = 20*[1 1];
+% beta = [0.05 0.01];
+% gamma = 1*[0.1 0.00001];
+
+N = 1000;
+f = [.01 0];
+A = 20*[1 0];
+d = 0.03;
+beta = d*[0.1 0.00];
+gamma = d^2*[0.003 0.0000];
 
 e = (randn(1,N) + 1i*randn(1,N))/sqrt(2); %noises
 t = cumsum(ones(1,N));
@@ -30,3 +37,13 @@ disp('Frequency estimates:')
 disp(1-fEst)
 disp('Beta estimates')
 disp(betaEst)
+
+%% WSEMA-skattning
+
+[ fEst, betaEst, gammaEst, zEst ] = WSEMA_1D_VOIGT(y',[1:N]',10,5,5,0.1,5,10,0);
+disp('Frequency estimates:')
+disp(1-fEst)
+disp('Beta estimates')
+disp(betaEst)
+disp('Gamma estimates')
+disp(gammaEst)
