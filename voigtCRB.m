@@ -26,7 +26,7 @@
 %
 % Modified by Magnus Mossberg 050210.
 %
-function [ crbVec, crbM ] = voigtCRB( freqVec, dampVec, ampVec, phaseVec, N, sigma2 )
+function [ crbVec, crbM ] = voigtCRB( freqVec, dampVec, voigtVec, ampVec, phaseVec, N, sigma2 )
 
 freqVec = freqVec(:);
 dampVec = dampVec(:);
@@ -34,22 +34,24 @@ ampVec  = ampVec(:);
 
 d = length(freqVec);
 nVec = 0:N-1;
-
-Zn = exp( i*freqVec*nVec - dampVec*nVec );
+Zv = exp(-voigtVec*nVec.^2);
+Zn = exp( i*freqVec*nVec - dampVec*nVec ).*Zv;
 Zp = (ones(d,1)*nVec) .* Zn;
+Zpp = (ones(d, 1)*nVec.^2)*Zn;
 
 Th = diag( exp( i*phaseVec ) );
-bZ = [ i*Th*Zp ; -Th*Zp ; Th*Zn ; i*Th*Zn ];
+bZ = [ i*Th*Zp ; -Th*Zp ; -Th*Zpp; Th*Zn ; i*Th*Zn ];
 %%% Q  = inv( 2*real(bZ*bZ') );
 %%% dQ = diag(Q);
 P = 2*real(bZ*bZ');
 Lambda = diag(ampVec);
 M = length(ampVec);
-S = zeros(4*M,4*M);
+S = zeros(5*M,5*M);
 S(1:M,1:M) = Lambda;
 S((M+1):2*M,(M+1):2*M) = Lambda;
-S((2*M+1):3*M,(2*M+1):3*M) = eye(M);
-S((3*M+1):4*M,(3*M+1):4*M) = Lambda;
+S((2*M+1):3*M,(2*M+1):3*M) = Lambda;
+S((3*M+1):4*M,(3*M+1):4*M) = eye(M);
+S((4*M+1):5*M,(4*M+1):5*M) = Lambda;
 V = (P*S)\(sigma2*inv(S));
 dV = diag(V);
 
@@ -58,10 +60,11 @@ dV = diag(V);
 %%% crbP   = dQ(3*d+1:end)./snrVec; % This is the phase CRBs.
 %%% crbA   = crbP .* (ampVec.^2);   % This is the amp CRBs.
 crbF = dV(1:M);
-crbP = dV((3*M+1):4*M);
-crbA = dV((2*M+1):3*M);
+crbV = dV((2*M+1):3*M);
+crbP = dV((4*M+1):5*M);
+crbA = dV((3*M+1):4*M);
 
-crbVec = [ crbF ; crbA ; crbP ];
+crbVec = [ crbF ; crbV; crbA ; crbP ];
 %%% crbM = Q;
 crbM = V;
 
