@@ -37,7 +37,7 @@ nVec = 0:N-1;
 Zv = exp(-voigtVec*nVec.^2);
 Zn = exp( i*freqVec*nVec - dampVec*nVec ).*Zv;
 Zp = (ones(d,1)*nVec) .* Zn;
-Zpp = (ones(d, 1)*nVec.^2)*Zn;
+Zpp = (ones(d, 1)*nVec.^2).*Zn;
 
 Th = diag( exp( i*phaseVec ) );
 bZ = [ i*Th*Zp ; -Th*Zp ; -Th*Zpp; Th*Zn ; i*Th*Zn ];
