@@ -31,18 +31,19 @@ function [ crbVec, crbM ] = voigtCRB( freqVec, dampVec, voigtVec, ampVec, phaseV
 freqVec = freqVec(:);
 dampVec = dampVec(:);
 ampVec  = ampVec(:);
+voigtVec = voigtVec(:);
 
 d = length(freqVec);
 nVec = 0:N-1;
-Zv = exp(-voigtVec*nVec.^2);
-Zn = exp( i*freqVec*nVec - dampVec*nVec ).*Zv;
+Zv = exp(-voigtVec*(nVec.^2));
+Zn = exp( 1i*freqVec*nVec - dampVec*nVec -voigtVec*(nVec.^2));%.*Zv;
 Zp = (ones(d,1)*nVec) .* Zn;
-Zpp = (ones(d, 1)*nVec.^2).*Zn;
+Zpp = (ones(d, 1)*(nVec.^2)).*Zn;
 
-Th = diag( exp( i*phaseVec ) );
-bZ = [ i*Th*Zp ; -Th*Zp ; -Th*Zpp; Th*Zn ; i*Th*Zn ];
-%%% Q  = inv( 2*real(bZ*bZ') );
-%%% dQ = diag(Q);
+Th = diag( exp( 1i*phaseVec ) );
+bZ = [ 1i*Th*Zp ; -Th*Zp ; -Th*Zpp; Th*Zn ; 1i*Th*Zn ];
+% Q  = inv( 2*real(bZ*bZ') );
+% dQ = diag(Q);
 P = 2*real(bZ*bZ');
 Lambda = diag(ampVec);
 M = length(ampVec);
@@ -52,19 +53,20 @@ S((M+1):2*M,(M+1):2*M) = Lambda;
 S((2*M+1):3*M,(2*M+1):3*M) = Lambda;
 S((3*M+1):4*M,(3*M+1):4*M) = eye(M);
 S((4*M+1):5*M,(4*M+1):5*M) = Lambda;
-V = (P*S)\(sigma2*inv(S));
+V = (P*S)\(sigma2*(S\eye(size(S))));
 dV = diag(V);
 
-%%% snrVec = ampVec.^2 / sigma2;
+%%%snrVec = ampVec.^2 / sigma2;
 %%% crbF   = dQ(1:d) ./ snrVec;     % This is the freq CRBs.
 %%% crbP   = dQ(3*d+1:end)./snrVec; % This is the phase CRBs.
 %%% crbA   = crbP .* (ampVec.^2);   % This is the amp CRBs.
 crbF = dV(1:M);
+crbB = dV(M+1:2*M);
 crbV = dV((2*M+1):3*M);
 crbP = dV((4*M+1):5*M);
 crbA = dV((3*M+1):4*M);
 
-crbVec = [ crbF ; crbV; crbA ; crbP ];
+crbVec = [ crbF ; crbB; crbV; crbA ; crbP ];
 %%% crbM = Q;
 crbM = V;
 
