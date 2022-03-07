@@ -65,7 +65,7 @@ sigma = 1; %noise std
 
 Avec = logspace(1, 3, 20);
 
-crbVec = zeros(4, length(Avec));
+crbVec = zeros(5, length(Avec));
 MSEvec = zeros(3, length(Avec));
 
 fEst_vec = zeros(1, N);
