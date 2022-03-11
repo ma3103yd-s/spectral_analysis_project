@@ -52,40 +52,42 @@ disp(gammaEst)
 close all
 rng(0)
 
-N=100; %antal simuleringar
+N=300; %antal simuleringar
 MSE = ones(3,N);
 n = 100;
-f = [.1 0];
-A = 50*[1 0];
+f = .1; 
+A = 50;
 d = 0.3;
-beta = d*[0.1 0.00];
-gamma = d^2*[0.003 0.0000];
+beta = 1e-3;
+gamma = 2e-4;
 
 sigma = 1; %noise std
 
-Avec = logspace(1, 3, 20);
+Avec = logspace(-0.3, 2, 20);
 
 crbVec = zeros(5, length(Avec));
 MSEvec = zeros(3, length(Avec));
 
 fEst_vec = zeros(1, N);
 
+
 for ii = 1:numel(Avec)
 
-    A = Avec(ii)*[1 0];
-    MSE(1,:) = f(1)*ones(1,N);
-    MSE(2,:) = beta(1)*ones(1,N);
-    MSE(3,:) = gamma(1)*ones(1,N);
+    A = Avec(ii);
+    nls_loops = 3*ii;
+    MSE(1,:) = f*ones(1,N);
+    MSE(2,:) = beta*ones(1,N);
+    MSE(3,:) = gamma*ones(1,N);
 
     for i=1:N
         phi = 2*pi*rand;
         e = sigma*((randn(1,n) + 1i*randn(1,n)))/sqrt(2); %noises
         t = cumsum(ones(1,n));
-        y = A(1)*exp(1j*2*pi*f(1)*t-beta(1)*t-gamma(1)*t.^2)*exp(1j*phi);
-        y = y+A(2)*exp(1j*2*pi*f(2)*t-beta(2)*t-gamma(2)*t.^2);
+        y = A*exp(1j*2*pi*f*t-beta*t-gamma*t.^2)*exp(1j*phi);
+        %y = y+A(2)*exp(1j*2*pi*f(2)*t-beta(2)*t-gamma(2)*t.^2);
         y = y+e;
         
-        [ fEst, betaEst, gammaEst, zEst ] = WSEMA_1D_VOIGT(y',[1:n]',20,3,2,0.1,10,30,0);
+        [ fEst, betaEst, gammaEst, zEst ] = WSEMA_1D_VOIGT(y',[1:n]',20,3,2,0.1,10,nls_loops,0);
         [~, index] = max(abs(zEst));
         fEst = 1-fEst(index);
         fEst_vec(i) = fEst;
@@ -95,26 +97,32 @@ for ii = 1:numel(Avec)
         MSE(1,i) = (MSE(1,i)-fEst)^2;
         MSE(2,i) = (MSE(2,i)-betaEst)^2;
         MSE(3,i) = (MSE(3,i)-gammaEst)^2;
-        
+        disp("Simulation: " + i/N);
         
     end
 
-crbVec(:, ii) = voigtCRB(f(1), beta(1), gamma(1), A(1), 0, n, sigma);
+crbVec(:, ii) = voigtCRB(f, beta, gamma, A, 0, n, sigma);
 MSEvec(:, ii) = mean(MSE,2); 
-disp(ii/length(Avec))
+disp("SNR: " + ii/length(Avec))
 end
 
 SNR = 10*log10(Avec.^2/sigma);
 logMSE = -10*log10(MSEvec);
 figure(1)
+hold on
 plot(SNR, logMSE(1,:), '.-');
+plot(SNR, -10*log10(crbVec(1,:)));
 title("Frequency MSE")
 figure(2)
+hold on
 title("Beta MSE");
 plot(SNR, logMSE(2,:), '.-');
+plot(SNR, -10*log10(crbVec(2,:)));
 figure(3)
+hold on
 title("Gamma MSE")
 plot(SNR, logMSE(3, :), '.-');
+plot(SNR, -10*log10(crbVec(3,:)));
 %% CRLB of beta for varying gamma
 close all
 rng(0)
@@ -143,7 +151,6 @@ legend(["gamma1 = " + gamma(1), "gamma2 = " + gamma(2), "gamma3 = " + gamma(3)])
 %% CRLB of gamma for varying beta
 
 
-%% CRLB of beta for varying gamma
 close all
 rng(0)
 
@@ -180,3 +187,85 @@ disp('Gamma.  CRB')
 disp(vCRB)
 disp('Gamma.RMSE/gammaCRB')
 disp(sqrt(mean(MSE(3,:)))/vCRB);
+%% 2D Monte Carlo
+close all
+rng(0)
+
+N=300; %antal simuleringar
+
+n = 100;
+f = [.1 0.3]; 
+A = [50 50];
+d = 0.3;
+beta = [1e-3 5e-4];
+gamma = [2e-4 7e-5];
+
+sigma = 1; %noise std
+
+Avec = logspace(-0.3, 2, 10);
+
+crbVec = zeros(5*length(f), length(Avec));
+MSEvec = zeros(3*length(f), length(Avec));
+
+fEst_vec = zeros(1, N);
+
+
+for ii = 1:numel(Avec)
+
+    A = Avec(ii);
+    nls_loops = 20;
+     if ii > 15
+         nls_loops = 40;
+     end
+  
+    MSE = zeros(3*length(f),N);
+
+    for i=1:N
+        phi1 = 2*pi*rand;
+        phi2 = 2*pi*rand;
+        e = sigma*((randn(1,n) + 1i*randn(1,n)))/sqrt(2); %noises
+        t = cumsum(ones(1,n));
+        y = A*exp(1j*2*pi*f(1)*t-beta(1)*t-gamma(1)*t.^2)*exp(1j*phi1);
+        y = y+A*exp(1j*2*pi*f(2)*t-beta(2)*t-gamma(2)*t.^2)*exp(1j*phi2);
+        y = y+e;
+        
+        [ fEst, betaEst, gammaEst, zEst ] = WSEMA_1D_VOIGT(y',[1:n]',20,2,2,0.1,10,nls_loops,0);
+        [~, index] = sort(abs(zEst), 'descend');
+        fEst = 1-fEst(index(1:length(f)));
+        fEst = sort(fEst);
+        betaEst = betaEst(index(1:length(beta)));
+        betaEst = sort(betaEst, 'descend');
+        gammaEst = gammaEst(index(1:length(gamma)));
+        gammaEst = sort(gammaEst ,'descend'); 
+        
+        MSE(1:2,i) = (f-fEst).^2;
+        MSE(3:4,i) = (beta-betaEst).^2;
+        MSE(5:6,i) = (gamma-gammaEst).^2;
+        disp("Simulation: " + i/N);
+        
+    end
+
+crbVec(:, ii) = voigtCRB(f, beta, gamma, [A A], [0.0 0.0], n, sigma);
+MSEvec(:, ii) = mean(MSE,2); 
+disp("SNR: " + ii/length(Avec))
+end
+fCRB = crbVec(1:length(f), :);
+betaCRB = crbVec(length(f)+1:2*length(f), :);
+gammaCRB = crbVec(2*length(f)+1:3*length(f), :);
+SNR = 10*log10(Avec.^2/sigma);
+logMSE = -10*log10(MSEvec);
+figure(2)
+hold on
+title("Beta MSE");
+plot(SNR, logMSE(3:4,:), 'r.-');
+plot(SNR, -10*log10(betaCRB(1,:)), 'r');
+plot(SNR, logMSE(4,:), 'g.-');
+plot(SNR, -10*log10(betaCRB(2,:)), 'g');
+figure(3)
+hold on
+title("Gamma MSE")
+plot(SNR, logMSE(5, :), 'r.-');
+plot(SNR, -10*log10(gammaCRB(1,:)), 'r');
+plot(SNR, logMSE(6, :), 'g.-');
+plot(SNR, -10*log10(gammaCRB(2,:)), 'g');
+
