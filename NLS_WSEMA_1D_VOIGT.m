@@ -28,7 +28,7 @@ z = F\y;
 zF = z;
 zB = z;
 zG = z;
-betaEst = 0*ones(size(fEst));
+betaEst = zeros(size(fEst));
 gammaEst = zeros(size(fEst));
 for j = 1:NLS_loops
     [fEst ,F,zF] = NLS_SEMA2D_total_freq(y,fEst,betaEst,gammaEst,T,F,zG,delta_k);
@@ -37,7 +37,7 @@ for j = 1:NLS_loops
     %[fEst ,F,zF] = NLS_SEMA2D_total_freq(y,fEst,betaEst,T,F,zB,delta_k);
 end
 
-zEst = zF;
+zEst = zG;
 
 end
 
@@ -55,7 +55,8 @@ for iPeak = 1:nbrPeaks
         diffVec = linspace(-zoomPrecision/2,zoomPrecision/2,P);
         zoomPrecision = 6*abs(diffVec(2)-diffVec(1));
         fVec = fEst(iPeak)+diffVec;
-        D = exp(T*(2i*pi*fVec-betaEst(iPeak))).*exp(-1*T.^2*gammaEst(iPeak));
+        T_temp = T*ones(1, length(fVec));
+        D = exp(T*(2i*pi*fVec-betaEst(iPeak))-(T_temp.^2)*gammaEst(iPeak));
         res = zeros(P,1);
         
         for j = 1:P
@@ -101,7 +102,8 @@ for iPeak = 1:nbrPeaks
         end
         
         %for inner = 1:2
-        D = exp(T*(2i*pi*fEst(iPeak)-dampVec)).*exp(-1*T.^2*(gammaEst(iPeak)));
+        T_temp = T*ones(1, length(dampVec));
+        D = exp(T*(2i*pi*fEst(iPeak)-dampVec)-(T_temp.^2)*gammaEst(iPeak));
         res = zeros(P,1);
         for j = 1:P
             d = D(:,j);
@@ -145,7 +147,8 @@ for iPeak = 1:nbrPeaks
         end
         
         %for inner = 1:2
-        D = exp(T*(2i*pi*fEst(iPeak)-betaEst(iPeak))).*exp(-1*T.^2*dampVec);
+        T_temp = T*ones(1,length(dampVec));
+        D = exp(T_temp*(2i*pi*fEst(iPeak)-betaEst(iPeak))-(T.^2)*dampVec);
         res = zeros(P,1);
         for j = 1:P
             d = D(:,j);
