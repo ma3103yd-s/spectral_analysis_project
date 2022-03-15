@@ -34,6 +34,8 @@ for j = 1:NLS_loops
     [fEst ,F,zF] = NLS_SEMA2D_total_freq(y,fEst,betaEst,gammaEst,T,F,zG,delta_k);
     [ betaEst,F,zB] = NLS_SEMA2D_total_damp(y,fEst,betaEst,gammaEst,T,F,zF);
     [ gammaEst,F,zG] = NLS_SEMA2D_voigt_total_damp(y,fEst,betaEst,gammaEst,T,F,zB);
+    %[betaEst, gammaEst, F, zG] = NLS_SEMA2D_ESTIMATE_BOTH(y, fEst, betaEst, gammaEst,...
+     %   T, F, zF);
     %[fEst ,F,zF] = NLS_SEMA2D_total_freq(y,fEst,betaEst,T,F,zB,delta_k);
 end
 
@@ -78,96 +80,76 @@ end
 
 function [ betaEst,F,z] = NLS_SEMA2D_total_damp(y,fEst,betaEst,gammaEst,T,F,z)
 nbrPeaks = size(fEst,2);
-P = 100;
 residual = y - F*z;
-outerMax = 5;
+
 
 for iPeak = 1:nbrPeaks
     %Keep this or not?
     y = residual + F(:,iPeak)*z(iPeak);
-    for iOuter = 1:outerMax
-        %Only want to do this if we havn't brought any beta estimates
-        if iOuter==1 %&& max(max(betaEst == 0))
-            dampVec = linspace(0,0.1,P);
-            dB = 2 * abs(dampVec(2)-dampVec(1));
-        else
-            %if exist('dB')~=1 %#ok<EXIST>
-            %    %Not sure if this is the best way, but it's something
-            %    dB =  mean(mean(betaEst))/100;
-            %end
-            lowLim = max(-dB,0);
-            differ = linspace(-dB,dB,P);
-            dampVec = betaEst(iPeak)+differ;
-            dB = 2 * abs(dampVec(2)-dampVec(1));
-        end
-        
-        %for inner = 1:2
-        T_temp = T*ones(1, length(dampVec));
-        D = exp(T*(2i*pi*fEst(iPeak)-dampVec)-(T_temp.^2)*gammaEst(iPeak));
-        res = zeros(P,1);
-        for j = 1:P
-            d = D(:,j);
-            res(j) = norm(y-d*(d\y))^2;
-        end
-        [~, locs] = min(res);
-        betaEst(iPeak)=dampVec(locs);
-        %end
-    end
-    d = D(:,locs);
-    F(:,iPeak) = d;
-    z(iPeak) = d\y;
-    %residual = residual - d*z(iPeak);
-    residual = y - d*z(iPeak);
+    
+    J =  @(beta) exp(T*(2i*pi*fEst(iPeak)-beta)-(T.^2)*gammaEst(iPeak));
+    
+    R = @(beta) norm(y-J(beta)*(J(beta)\y))^2;
+    options = optimset('TolX', 1e-12);
+    betaVal = fminsearch(R, betaEst(iPeak), options);
+    betaEst(iPeak) = betaVal;
+    ftemp = J(betaVal);
+    F(:, iPeak) = ftemp;
+    z(iPeak) = ftemp\y;
+    residual = y-ftemp*z(iPeak);
 end
 end
 
 function [ gammaEst,F,z] = NLS_SEMA2D_voigt_total_damp(y,fEst,betaEst,gammaEst,T,F,z)
 nbrPeaks = size(fEst,2);
-P = 100;
 residual = y - F*z;
-outerMax = 5;
+
+
+
 
 for iPeak = 1:nbrPeaks
     %Keep this or not?
     y = residual + F(:,iPeak)*z(iPeak);
-    for iOuter = 1:outerMax
-        %Only want to do this if we havn't brought any beta estimates
-        if iOuter==1 %&& max(max(betaEst == 0))
-            dampVec = linspace(0,0.01,P);
-            dB = 2 * abs(dampVec(2)-dampVec(1));
-        else
-            %if exist('dB')~=1 %#ok<EXIST>
-            %    %Not sure if this is the best way, but it's something
-            %    dB =  mean(mean(betaEst))/100;
-            %end
-            lowLim = max(-dB,0);
-            differ = linspace(-dB,dB,P);
-            dampVec = gammaEst(iPeak)+differ;
-            dB = 2 * abs(dampVec(2)-dampVec(1));
-        end
-        
-        %for inner = 1:2
-        T_temp = T*ones(1,length(dampVec));
-        D = exp(T_temp*(2i*pi*fEst(iPeak)-betaEst(iPeak))-(T.^2)*dampVec);
-        res = zeros(P,1);
-        for j = 1:P
-            d = D(:,j);
-            res(j) = norm(y-d*(d\y))^2;
-        end
-        [~, locs] = min(res);
-        gammaEst(iPeak)=dampVec(locs);
-        %end
-    end
-    d = D(:,locs);
-    F(:,iPeak) = d;
-    z(iPeak) = d\y;
-    %residual = residual - d*z(iPeak);
-    residual = y - d*z(iPeak);
-end
-
-
+    J =  @(gamma) exp(T*(2i*pi*fEst(iPeak)-betaEst(iPeak))-(T.^2)*gamma);
+    
+    R = @(gamma) norm(y-J(gamma)*(J(gamma)\y))^2;
+    options = optimset('tolX', 1e-8);
+    gammaVal = fminsearch(R, gammaEst(iPeak), options);
+    gammaEst(iPeak) = gammaVal;
+    ftemp = J(gammaVal);
+    F(:, iPeak) = ftemp;
+    z(iPeak) = ftemp\y;
+    residual = y-ftemp*z(iPeak);
+    
 
 end
 
+end
 
+function [betaEst, gammaEst,F,z] = NLS_SEMA2D_ESTIMATE_BOTH(y,fEst,betaEst,gammaEst,T,F,z)
+nbrPeaks = size(fEst,2);
+residual = y - F*z;
+
+
+
+
+for iPeak = 1:nbrPeaks
+    %Keep this or not?
+    y = residual + F(:,iPeak)*z(iPeak);
+    J =  @(x) exp(T*(2i*pi*fEst(iPeak)-x(1))-(T.^2)*x(2));
+    
+    R = @(x) norm(y-J(x)*(J(x)\y))^2;
+    options = optimset('tolX', 1e-12);
+    xVal = fminsearch(R, [betaEst(iPeak), gammaEst(iPeak)], options);
+    betaEst(iPeak) = xVal(1);
+    gammaEst(iPeak) = xVal(2);
+    ftemp = J(xVal);
+    F(:, iPeak) = ftemp;
+    z(iPeak) = ftemp\y;
+    residual = y-ftemp*z(iPeak);
+    
+
+end
+
+end
 

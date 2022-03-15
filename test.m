@@ -191,10 +191,10 @@ disp(sqrt(mean(MSE(3,:)))/vCRB);
 close all
 rng(0)
 
-N=100; %antal simuleringar
+N=20; %antal simuleringar
 
 n = 100;
-f = [.1 0.2]; 
+f = [.1 0.3]; 
 A = [50 50];
 d = 0.3;
 beta = [1e-3 5e-4];
@@ -216,7 +216,7 @@ bias_gamma = zeros(2,N);
 for ii = 1:numel(Avec)
 
     A = Avec(ii);
-    nls_loops = 50*ii;
+    nls_loops = 20*ii;
      
   
     MSE = zeros(3*length(f),N);
@@ -225,7 +225,7 @@ for ii = 1:numel(Avec)
         phi1 = 2*pi*rand;
         phi2 = 2*pi*rand;
         e = sigma*((randn(1,n) + 1i*randn(1,n)))/sqrt(2); %noises
-        t = [1:n]';
+        t = [0:n-1]';
         y = A*exp(1j*2*pi*f(1)*t-beta(1)*t-gamma(1)*(t.^2))*exp(1j*phi1);
         y = y+A*exp(1j*2*pi*f(2)*t-beta(2)*t-gamma(2)*(t.^2))*exp(1j*phi2);
         y = y+e';
@@ -233,15 +233,15 @@ for ii = 1:numel(Avec)
         [ fEst, betaEst, gammaEst, zEst ] = WSEMA_1D_VOIGT(y,t,20,3,2,0.1,10,nls_loops,0);
         %[ fEst, betaEst, gammaEst, zEst ] = WSEMA_1D_VOIGT(y',[1:n]',20,3,2,0.15,10,nls_loops,0);
         [~, index] = sort(abs(zEst), 'descend');
-        fEst = 1-fEst(index);
+        %fEst = %1-fEst(index);
         fEst = fEst(1:length(f));
         [fEst, I] = sort(fEst);
         betaEst = betaEst(index);
         betaEst = betaEst(I);
-        betaEst = sort(betaEst, 'descend');
+        %betaEst = sort(betaEst, 'descend');
         gammaEst = gammaEst(index);
         gammaEst = gammaEst(I);
-        gammaEst = sort(gammaEst, 'descend');
+        %gammaEst = sort(gammaEst, 'descend');
         bias_beta(:,i) = (betaEst-beta)';
         MSE(1:2,i) = (f-fEst)'.^2;        
         MSE(3:4,i) = (beta-betaEst)'.^2;
@@ -250,7 +250,7 @@ for ii = 1:numel(Avec)
         
     end
 
-crbVec(:, ii) = voigtCRB(f, beta, gamma, [A A], [0.0 0.0], n, sigma);
+crbVec(:, ii) = voigtCRB(2*pi*f, beta, gamma, [A A], [0.0 0.0], n, sigma);
 bias_beta_vec(:, ii) = mean(bias_beta, 2);
 MSEvec(:, ii) = mean(MSE,2); 
 disp("SNR: " + ii/length(Avec))
@@ -294,3 +294,4 @@ y = y+A*exp(1j*2*pi*f(2)*t-beta(2)*t-gamma(2)*(t.^2));%*exp(1j*phi2);
 y = y+e';
 [ fEst, betaEst, gammaEst, zEst ] = WSEMA_1D_VOIGT(y,t,20,3,2,0.2,10,nls_loops,0)
 voigtCRB(f, beta, gamma, [A A], [0.0 0.0], n, sigma)
+%fEst = 0.100017579249385   0.300000446093649
