@@ -1,6 +1,6 @@
 function [fEst,betaEst, gammaEst, zEst,F] = NLS_WSEMA_1D_VOIGT(y,F,z,fEst,T,delta_k,NLS_loops,tooClose)
-%NLS_WSEMA_1D Yields damping estimates and refined refined frequency
-%estimates via NLS
+%NLS_WSEMA_1D Yields linear and quadrating damping estimates and refined frequency
+% estimates via NLS
 
 %Merge closely spaced peaks
 fEstNew = [];
@@ -13,9 +13,9 @@ while j<=length(fEst)
     while jj<length(fEst) && diffz(jj)<tooClose
         jj = jj+1;
     end
-    fEstNew = [fEstNew median(fEst(j:jj))]; %#ok<*AGROW>
-    FNew = [FNew median(F(:,j:jj),2)]; %Hur stor roll spelar detta?
-    zNew = [zNew; median(z(j:jj))]; %Hur stor roll spelar detta?
+    fEstNew = [fEstNew median(fEst(j:jj))]; 
+    FNew = [FNew median(F(:,j:jj),2)]; 
+    zNew = [zNew; median(z(j:jj))]; 
     j = jj+1;
 end
 
@@ -34,9 +34,7 @@ for j = 1:NLS_loops
     [fEst ,F,zF] = NLS_SEMA2D_total_freq(y,fEst,betaEst,gammaEst,T,F,zG,delta_k);
     [ betaEst,F,zB] = NLS_SEMA2D_total_damp(y,fEst,betaEst,gammaEst,T,F,zF);
     [ gammaEst,F,zG] = NLS_SEMA2D_voigt_total_damp(y,fEst,betaEst,gammaEst,T,F,zB);
-    %[betaEst, gammaEst, F, zG] = NLS_SEMA2D_ESTIMATE_BOTH(y, fEst, betaEst, gammaEst,...
-     %   T, F, zF);
-    %[fEst ,F,zF] = NLS_SEMA2D_total_freq(y,fEst,betaEst,T,F,zB,delta_k);
+    
 end
 
 zEst = zG;
@@ -44,6 +42,7 @@ zEst = zG;
 end
 
 function [fEst ,F,z] = NLS_SEMA2D_total_freq(y,fEst,betaEst, gammaEst, T,F,z,zoomPrecision)
+% Compute NLS using grid based method
 nbrPeaks = length(fEst);
 P = 100;
 
@@ -72,26 +71,27 @@ for iPeak = 1:nbrPeaks
     d = D(:,locs);
     F(:,iPeak) = d;
     z(iPeak) = d\y;
-    %residual = residual - d*z(iPeak);
+    
     residual = y - d*z(iPeak);
 end
 
 end
 
 function [ betaEst,F,z] = NLS_SEMA2D_total_damp(y,fEst,betaEst,gammaEst,T,F,z)
+% Compute NLS damping estimate using fminbnd
 nbrPeaks = size(fEst,2);
 residual = y - F*z;
 
 
 for iPeak = 1:nbrPeaks
-    %Keep this or not?
+    % Get the signal at the peak
     y = residual + F(:,iPeak)*z(iPeak);
     
     J =  @(beta) exp(T*(2i*pi*fEst(iPeak)-beta)-(T.^2)*gammaEst(iPeak));
-    
+    % cost function to minimize with fminbnd
     R = @(beta) norm(y-J(beta)*(J(beta)\y))^2;
-    options = optimset('TolX', 1e-12);
-    betaVal = fminsearch(R, betaEst(iPeak), options);
+    options = optimset('TolX', 1e-13, 'TolFun', 1e-13);
+    betaVal = fminbnd(R, 0.0, 1.0, options);
     betaEst(iPeak) = betaVal;
     ftemp = J(betaVal);
     F(:, iPeak) = ftemp;
@@ -101,20 +101,18 @@ end
 end
 
 function [ gammaEst,F,z] = NLS_SEMA2D_voigt_total_damp(y,fEst,betaEst,gammaEst,T,F,z)
+% Compute NLS of gamma estimate using fminbnd
 nbrPeaks = size(fEst,2);
 residual = y - F*z;
 
-
-
-
 for iPeak = 1:nbrPeaks
-    %Keep this or not?
+    % Get the signal at the peak;
     y = residual + F(:,iPeak)*z(iPeak);
     J =  @(gamma) exp(T*(2i*pi*fEst(iPeak)-betaEst(iPeak))-(T.^2)*gamma);
-    
+    % Cost function to minimize
     R = @(gamma) norm(y-J(gamma)*(J(gamma)\y))^2;
-    options = optimset('tolX', 1e-8);
-    gammaVal = fminsearch(R, gammaEst(iPeak), options);
+    options = optimset('TolX', 1e-13, 'TolFun', 1e-13);
+    gammaVal = fminbnd(R, 0.0, 1.0, options);
     gammaEst(iPeak) = gammaVal;
     ftemp = J(gammaVal);
     F(:, iPeak) = ftemp;
@@ -126,30 +124,4 @@ end
 
 end
 
-function [betaEst, gammaEst,F,z] = NLS_SEMA2D_ESTIMATE_BOTH(y,fEst,betaEst,gammaEst,T,F,z)
-nbrPeaks = size(fEst,2);
-residual = y - F*z;
-
-
-
-
-for iPeak = 1:nbrPeaks
-    %Keep this or not?
-    y = residual + F(:,iPeak)*z(iPeak);
-    J =  @(x) exp(T*(2i*pi*fEst(iPeak)-x(1))-(T.^2)*x(2));
-    
-    R = @(x) norm(y-J(x)*(J(x)\y))^2;
-    options = optimset('tolX', 1e-12);
-    xVal = fminsearch(R, [betaEst(iPeak), gammaEst(iPeak)], options);
-    betaEst(iPeak) = xVal(1);
-    gammaEst(iPeak) = xVal(2);
-    ftemp = J(xVal);
-    F(:, iPeak) = ftemp;
-    z(iPeak) = ftemp\y;
-    residual = y-ftemp*z(iPeak);
-    
-
-end
-
-end
 
