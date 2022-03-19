@@ -1,5 +1,5 @@
 
-
+%% Test simulating a simple damped sinusoid
 % N = 100;
 % f = [.3 .4];
 % A = 20*[1 1];
@@ -20,17 +20,9 @@ y = y+A(2)*exp(1j*2*pi*f(2)*t-beta(2)*t-gamma(2)*t.^2);
 y = y+e;
 plot(real(y))
 
-%% DSURE-skattning
 
-lambda = 0.1; %lambda =0.1 funkar inte alls
-[f_es,x_es,beta_es]=SURE_IR_bfv_FE_fastER2(y',N,1:N,lambda);
-disp('Frequency estimates:')
-disp(f_es)
-disp('Beta estimates')
-disp(beta_es)
-plot(f_es);
 
-%% WSEMA-skattning
+%% WSEMA-skattning test
 
 [ fEst, betaEst, zEst ] = WSEMA_1D_FE(y',[1:N]',10,5,5,0.1,5,10,0);
 disp('Frequency estimates:')
@@ -38,7 +30,7 @@ disp(1-fEst)
 disp('Beta estimates')
 disp(betaEst)
 
-%% WSEMA-skattning Voigt
+%% WSEMA-skattning Voigt test
 
 [ fEst, betaEst, gammaEst, zEst ] = WSEMA_1D_VOIGT(y',[1:N]',10,5,5,0.1,5,10,0);
 disp('Frequency estimates:')
@@ -48,11 +40,11 @@ disp(betaEst)
 disp('Gamma estimates')
 disp(gammaEst)
 
-%% Monte Carlo
+%% Monte Carlo 1 Mode
 close all
 rng(0)
 
-N=100; %antal simuleringar
+N=200; %antal simuleringar
 MSE = ones(3,N);
 n = 100;
 f = .1; 
@@ -70,7 +62,7 @@ MSEvec = zeros(3, length(Avec));
 
 fEst_vec = zeros(1, N);
 
-
+% Iterate over different SNR
 for ii = 1:numel(Avec)
 
     A = Avec(ii);
@@ -78,7 +70,7 @@ for ii = 1:numel(Avec)
     MSE(1,:) = f*ones(1,N);
     MSE(2,:) = beta*ones(1,N);
     MSE(3,:) = gamma*ones(1,N);
-
+    % Iterate over different simulations and compute MSE
     for i=1:N
         phi = 2*pi*rand;
         e = sigma*((randn(1,n) + 1i*randn(1,n)))/sqrt(2); %noises
@@ -100,12 +92,12 @@ for ii = 1:numel(Avec)
         disp("Simulation: " + i/N);
         
     end
-
+% Compute and store CRB values
 crbVec(:, ii) = voigtCRB(f, beta, gamma, A, 0, n, sigma);
 MSEvec(:, ii) = mean(MSE,2); 
 disp("SNR: " + ii/length(Avec))
 end
-
+% Plot results
 SNR = 10*log10(Avec.^2/sigma);
 logMSE = -10*log10(MSEvec);
 figure(1)
@@ -147,7 +139,10 @@ end
 
 
 semilogy(beta, crbBeta);
-legend(["gamma1 = " + gamma(1), "gamma2 = " + gamma(2), "gamma3 = " + gamma(3)]);
+title("RRCRB of β for three different γ")
+ylabel("RRCRB [%]")
+xlabel("β")
+legend(["γ = " + gamma(1), "γ = " + gamma(2), "γ = " + gamma(3)]);
 %% CRLB of gamma for varying beta
 
 
@@ -174,7 +169,10 @@ end
 
 
 semilogy(gamma, crbGamma);
-legend(["beta1 = " + beta(1), "beta2 = " + beta(2), "beta3 = " + beta(3)]);
+title("RRCRB of γ for three different β")
+ylabel("RRCRB [%]")
+xlabel("γ")
+legend(["β = " + beta(1), "β = " + beta(2), "β = " + beta(3)]);
 
 %%
 disp('Freq.  MSE')
@@ -187,18 +185,18 @@ disp('Gamma.  CRB')
 disp(vCRB)
 disp('Gamma.RMSE/gammaCRB')
 disp(sqrt(mean(MSE(3,:)))/vCRB);
-%% 2D Monte Carlo
+%% Monte Carlo for signal with 2 modes
 close all
 rng(0)
 
-N=20; %antal simuleringar
+N=200; %antal simuleringar
 
 n = 100;
 f = [.1 0.3]; 
 A = [50 50];
 d = 0.3;
-beta = [1e-3 5e-4];
-gamma = [2e-4 7e-5];
+beta = [8e-3 3e-3];
+gamma = [6e-4 1e-4];
 
 sigma = 1; %noise std
 
@@ -216,7 +214,7 @@ bias_gamma = zeros(2,N);
 for ii = 1:numel(Avec)
 
     A = Avec(ii);
-    nls_loops = 20*ii;
+    nls_loops = 100*ii;
      
   
     MSE = zeros(3*length(f),N);
@@ -231,17 +229,16 @@ for ii = 1:numel(Avec)
         y = y+e';
         
         [ fEst, betaEst, gammaEst, zEst ] = WSEMA_1D_VOIGT(y,t,20,3,2,0.1,10,nls_loops,0);
-        %[ fEst, betaEst, gammaEst, zEst ] = WSEMA_1D_VOIGT(y',[1:n]',20,3,2,0.15,10,nls_loops,0);
+        % Sort estimates by amplitude and take the two highest amplitudes
         [~, index] = sort(abs(zEst), 'descend');
-        %fEst = %1-fEst(index);
         fEst = fEst(1:length(f));
         [fEst, I] = sort(fEst);
         betaEst = betaEst(index);
         betaEst = betaEst(I);
-        %betaEst = sort(betaEst, 'descend');
+        betaEst = sort(betaEst, 'descend');
         gammaEst = gammaEst(index);
         gammaEst = gammaEst(I);
-        %gammaEst = sort(gammaEst, 'descend');
+        gammaEst = sort(gammaEst, 'descend');
         bias_beta(:,i) = (betaEst-beta)';
         MSE(1:2,i) = (f-fEst)'.^2;        
         MSE(3:4,i) = (beta-betaEst)'.^2;
@@ -263,35 +260,15 @@ logMSE = -10*log10(MSEvec);
 figure(2)
 betaCRB_test = betaCRB_test(1:2, :);
 hold on
-title("Beta MSE");
-plot(SNR, logMSE(3,:), 'r.-');
+title("β MSE and CRB for two modes");
+plot(SNR, logMSE(3,:), 'r.--');
 plot(SNR, -10*log10(betaCRB(1,:)), 'r');
-plot(SNR, logMSE(4,:), 'g.-');
-plot(SNR, -10*log10(betaCRB(2,:)), 'g');
+plot(SNR, logMSE(4,:), 'b.--');
+plot(SNR, -10*log10(betaCRB(2,:)), 'b');
 figure(3)
 hold on
-title("Gamma MSE")
-plot(SNR, logMSE(5, :), 'r.-');
+title("γ MSE and CRB for two modes")
+plot(SNR, logMSE(5, :), 'r.--');
 plot(SNR, -10*log10(gammaCRB(1,:)), 'r');
-plot(SNR, logMSE(6, :), 'g.-');
-plot(SNR, -10*log10(gammaCRB(2,:)), 'g');
-%% Test single signal
-n = 100;
-f = [.1 0.3]; 
-A = 50;
-beta = [0.001 0.0001];
-gamma = [0.0002 0.00007];
-%gamma = [0.0 0.0];
-nls_loops = 200;
-sigma = 1;
-
-phi1 = 2*pi*rand;
-phi2 = 2*pi*rand;
-e = sigma*((randn(1,n) + 1i*randn(1,n)))/sqrt(2); %noises
-t = [1:n]';
-y = A*exp(1j*2*pi*f(1)*t-beta(1)*t-gamma(1)*(t.^2));%*exp(1j*phi1);
-y = y+A*exp(1j*2*pi*f(2)*t-beta(2)*t-gamma(2)*(t.^2));%*exp(1j*phi2);
-y = y+e';
-[ fEst, betaEst, gammaEst, zEst ] = WSEMA_1D_VOIGT(y,t,20,3,2,0.2,10,nls_loops,0)
-voigtCRB(f, beta, gamma, [A A], [0.0 0.0], n, sigma)
-%fEst = 0.100017579249385   0.300000446093649
+plot(SNR, logMSE(6, :), 'b.--');
+plot(SNR, -10*log10(gammaCRB(2,:)), 'b');

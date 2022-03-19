@@ -1,5 +1,5 @@
 function [ fEst, betaEst, gammaEst, zEst ] = WSEMA_1D_VOIGT(y,T,gridSize,zoomSteps,zoomGridSize,gamma,nbrReweights,NLS_loops,extraLASSO,tooClose)
-%WSEMA_1D 1D implementation of WSEM
+%WSEMA_1D 1D implementation of WSEMA
 %y - signal values [N x 1]
 %T - time points [N x 1]
 %gridSize - number of gridpoints on [0,1]
@@ -20,7 +20,7 @@ end
 
 fGrid = linspace(0,1-1/gridSize,gridSize);
 A_1 = createVoigtDictionary_1D(T,fGrid,0, 0);
-%A_1 = createDictionary_1D(T,fGrid,0.001);
+
 
 lambda_org = gamma*norm(A_1'*y,inf);
 rho = 10;
@@ -53,9 +53,9 @@ for j = 1:zoomSteps
     for jj = 1:length(f_active)
         fGridTemp = linspace(f_active(jj),f_active(jj)+delta_k_old-delta_k,zoomGridSize);
         A_k_temp = createVoigtDictionary_1D(T,fGridTemp,0, 0);
-        %A_k_temp = createDictionary_1D(T,fGridTemp,0.001);
         
-        f_k = [f_k fGridTemp]; %#ok<*AGROW>
+        
+        f_k = [f_k fGridTemp]; 
         A_k = [A_k A_k_temp];
     end
     
@@ -88,12 +88,12 @@ if extraLASSO
     
     A_K_hat = exp(2i*pi*T*f_active(:)');
     lambda_org = gamma*norm(A_K_hat'*y,inf);
-    x_start = z(index); %Initialize like this or with zeros?
+    x_start = z(index); 
     x_start = zeros(size(x_start));
     u = zeros(size(x_start));
     [~,z,u] = boydLasso_complex(A_K_hat,y,lambda_org,rho,alpha,x_start,u);
     for jj = 1:nbrReweights
-        lambda = lambda_org./(abs(z)+0.001); %Lower this
+        lambda = lambda_org./(abs(z)+0.001); 
         [~,z,u,iterTemp] = boydLasso_complex(A_K_hat,y,lambda,rho,alpha,x_start,u);
         if iterTemp == 1
             break;
@@ -112,7 +112,6 @@ F = A_K_hat(:,index);
 z = F\y;
 
 [fEst,betaEst,gammaEst, z,F] = NLS_WSEMA_1D_VOIGT(y,F,z,f_active,T,delta_k,NLS_loops,tooClose);
-%[fEst,betaEst,z,F] = NLS_WSEMA_1D(y,F,z,fEst,T,delta_k,NLS_loops,1e-2);
 
 if extraLASSO && 0
     %Run the LASSO once again, after the NLS

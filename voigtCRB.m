@@ -1,11 +1,12 @@
-% FUNCTION [ crbVec, crbM ] = dampedCRB( freqVec, dampVec, ampVec, phaseVec, N, sigma2 )
+% FUNCTION [ crbVec, crbM ] = dampedCRB( freqVec, dampVec, voigtVec, ampVec, phaseVec, N, sigma2 )
 %
 % This function computes the CRB for a signal consisting of a sum of d
-% damped sinusoids.
+% voigt damped sinusoids.
 % 
 % Input:
 %   freqVec  -   Vector containing the d true frequencies (in radians).
 %   dampVec  -   Vector containing the d true damping constants.
+%   voigtVec -   vector containing d true quadratic damping constants 
 %   ampVec   -   Vector containing the d true amplitudes.
 %   phaseVec -   Vector containing the d true phases.
 %   N        -   Number of samples.
@@ -13,19 +14,23 @@
 %
 % Output:
 %   crbVec  -   A vector containing the CRB values, ordered as
-%               [ freq_1 ... freq_d amp_1 ... amp_d phase_1 ... phase_d ]
+%               [ freq_1 ... freq_d damp_1 .. damp_d voigt_damp_1 ...
+%               voigt_damp_d amp_1 ... amp_d phase_1 ... phase_d ]
 %   crbM    -   Full CRB matrix.
 %               
-% Note especially that the CRB for kth frequency is equal to the CRB for
-% the kth damping constant. Reference:
+%  Reference:
 %
 %   Y. Yao, S. Pandit, "Cramer-Rao Lower Bound for a Dampled Sinusoidal
 %   Process", IEEE T SP, pp. 878-885, April 1995.
+% 
 %
 % By Andreas Jakobsson, last modified 041202.
 %
 % Modified by Magnus Mossberg 050210.
-%
+% Modified by Markus Ydreskog and Erik Troedsson 2020-03-19
+% Modified the code for Voigt line shapes.
+% Frequency CRB is no longer the same as the linear damping so this term
+% is now also returned.
 function [ crbVec, crbM ] = voigtCRB( freqVec, dampVec, voigtVec, ampVec, phaseVec, N, sigma2 )
 
 freqVec = freqVec(:);
@@ -35,15 +40,14 @@ voigtVec = voigtVec(:);
 
 d = length(freqVec);
 nVec = 0:N-1;
-Zv = exp(-voigtVec*(nVec.^2));
-Zn = exp( 1i*freqVec*nVec - dampVec*nVec -voigtVec*(nVec.^2));%.*Zv;
+
+Zn = exp( 1i*freqVec*nVec - dampVec*nVec -voigtVec*(nVec.^2));
 Zp = (ones(d,1)*nVec) .* Zn;
 Zpp = (ones(d, 1)*(nVec.^2)).*Zn;
 
 Th = diag( exp( 1i*phaseVec ) );
 bZ = [ 1i*Th*Zp ; -Th*Zp ; -Th*Zpp; Th*Zn ; 1i*Th*Zn ];
-% Q  = inv( 2*real(bZ*bZ') );
-% dQ = diag(Q);
+
 P = 2*real(bZ*bZ');
 Lambda = diag(ampVec);
 M = length(ampVec);
@@ -67,7 +71,6 @@ crbP = dV((4*M+1):5*M);
 crbA = dV((3*M+1):4*M);
 
 crbVec = [ crbF ; crbB; crbV; crbA ; crbP ];
-%%% crbM = Q;
 crbM = V;
 
 
