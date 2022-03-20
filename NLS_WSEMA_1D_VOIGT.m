@@ -1,5 +1,5 @@
 function [fEst,betaEst, gammaEst, zEst,F] = NLS_WSEMA_1D_VOIGT(y,F,z,fEst,T,delta_k,NLS_loops,tooClose)
-%NLS_WSEMA_1D Yields linear and quadrating damping estimates and refined frequency
+%NLS_WSEMA_1D Yields linear and quadratic damping estimates and refined frequency
 % estimates via NLS
 
 %Merge closely spaced peaks
